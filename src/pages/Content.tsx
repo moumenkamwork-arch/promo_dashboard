@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import * as DropdownMenu from '@radix-ui/react-dropdown-menu';
-import { DotsThree, Trash, ImageSquare, SquaresFour, ArrowsClockwise } from '@phosphor-icons/react';
+import { DotsThree, Trash, ImageSquare, SquaresFour, ArrowsClockwise, Star } from '@phosphor-icons/react';
 import { api, getList, errorMessage } from '@/lib/api';
 import type { Ad, Offer, Service } from '@/types/api';
 import { PageHeader } from '@/components/ui/PageHeader';
@@ -73,6 +73,19 @@ export default function Content() {
     onError: (e) => toast.error(errorMessage(e)),
   });
 
+  // v1 interim: manual "feature" toggle. Flips offers.is_featured — the same flag
+  // Stripe would flip in v2 — which drives both Promoo of the Day and Top Offers on
+  // the mobile home. See promo_mobile/docs/v1_interim_admin_curation.md.
+  const featureM = useMutation({
+    mutationFn: ({ id, is_featured }: { id: string; is_featured: boolean }) =>
+      api.patch(`/admin/content/offers/${id}/feature`, { is_featured }),
+    onSuccess: (_d, v) => {
+      toast.success(t(v.is_featured ? 'content.featureDone' : 'content.unfeatureDone'));
+      qc.invalidateQueries({ queryKey: ['content'] });
+    },
+    onError: (e) => toast.error(errorMessage(e)),
+  });
+
   const changeTab = (v: string) => {
     setTab(v as Kind);
     setPage(1);
@@ -80,7 +93,7 @@ export default function Content() {
 
   const activeQ = tab === 'offers' ? offersQ : tab === 'ads' ? adsQ : servicesQ;
 
-  const StatusActions = ({ kind, id, title, statuses }: { kind: 'offers' | 'ads'; id: string; title: string; statuses: string[] }) => (
+  const StatusActions = ({ kind, id, title, statuses, featured }: { kind: 'offers' | 'ads'; id: string; title: string; statuses: string[]; featured?: boolean }) => (
     <div className="flex justify-end">
       <DropdownMenu.Root>
         <DropdownMenu.Trigger className="rounded-md p-1.5 text-ink-muted transition-colors hover:bg-surface-3 hover:text-ink">
@@ -90,8 +103,20 @@ export default function Content() {
           <DropdownMenu.Content
             align="end"
             sideOffset={6}
-            className="z-50 w-52 rounded-md border border-line bg-surface-2 p-1 shadow-2xl data-[state=open]:animate-fade-up"
+            className="z-50 w-64 rounded-md border border-line bg-surface-2 p-1 shadow-2xl data-[state=open]:animate-fade-up"
           >
+            {featured !== undefined ? (
+              <>
+                <DropdownMenu.Item
+                  onSelect={() => featureM.mutate({ id, is_featured: !featured })}
+                  className="flex cursor-pointer items-center gap-2 rounded-sm px-3 py-2 text-sm text-ink-muted outline-none data-[highlighted]:bg-surface-3 data-[highlighted]:text-ink"
+                >
+                  <Star size={14} weight={featured ? 'fill' : 'regular'} className={featured ? '' : 'text-accent'} />
+                  {t(featured ? 'content.unfeature' : 'content.feature')}
+                </DropdownMenu.Item>
+                <div className="my-1 h-px bg-line" />
+              </>
+            ) : null}
             <p className="px-3 py-1.5 text-[10px] uppercase tracking-wider text-ink-faint">{t('content.changeStatus')}</p>
             {statuses.map((s) => (
               <DropdownMenu.Item
@@ -141,11 +166,20 @@ export default function Content() {
                   columns={['thumb', 'title', 'owner', 'price', 'status', 'actions']}
                   render={(o: Offer) => ({
                     thumb: <Thumb url={o.media_urls?.[0]} />,
-                    title: <span className="font-medium text-ink">{o.title}</span>,
+                    title: (
+                      <span className="flex items-center gap-1.5 font-medium text-ink">
+                        {o.is_featured ? (
+                          <span className="shrink-0 leading-none" title={t('content.featured')}>
+                            <Star size={14} weight="fill" className="text-accent" />
+                          </span>
+                        ) : null}
+                        {o.title}
+                      </span>
+                    ),
                     owner: <OwnerCell profile={o.profile} />,
                     price: <span className="font-mono text-sm">{formatMoney(o.offer_price)}</span>,
                     status: <StatusBadge status={o.status} />,
-                    actions: <StatusActions kind="offers" id={o.id} title={o.title} statuses={OFFER_STATUSES} />,
+                    actions: <StatusActions kind="offers" id={o.id} title={o.title} statuses={OFFER_STATUSES} featured={o.is_featured} />,
                   })}
                 />
               </TabPanel>

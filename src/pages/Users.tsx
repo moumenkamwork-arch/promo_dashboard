@@ -3,7 +3,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import * as DropdownMenu from '@radix-ui/react-dropdown-menu';
 import { createColumnHelper } from '@tanstack/react-table';
-import { DotsThree, MagnifyingGlass, SealCheck, Prohibit, Trash, CheckCircle, Eye } from '@phosphor-icons/react';
+import { DotsThree, MagnifyingGlass, SealCheck, Prohibit, Trash, CheckCircle, Eye, Star } from '@phosphor-icons/react';
 import { api, getList, errorMessage } from '@/lib/api';
 import type { AccountType, Profile } from '@/types/api';
 import { useDebounce } from '@/lib/useDebounce';
@@ -86,6 +86,19 @@ export default function Users() {
     onError: (e) => toast.error(errorMessage(e)),
   });
 
+  // v1 interim: manual "feature on home" toggle. Inserts/deactivates a
+  // featured_accounts (placement=home) row — the same one Stripe would create in
+  // v2 — which drives the "Featured profiles" row on the mobile home. See
+  // promo_mobile/docs/v1_interim_admin_curation.md.
+  const featureM = useMutation({
+    mutationFn: (u: Profile) => api.patch(`/admin/users/${u.id}/feature-home`, { is_featured: !u.is_featured }),
+    onSuccess: (_d, u) => {
+      toast.success(u.is_featured ? t('users.unfeatureHomeDone') : t('users.featureHomeDone'));
+      invalidate();
+    },
+    onError: (e) => toast.error(errorMessage(e)),
+  });
+
   const onSearch = (v: string) => {
     setSearchRaw(v);
     setPage(1);
@@ -126,6 +139,11 @@ export default function Users() {
               {u.is_verified ? (
                 <Badge tone="info">
                   <SealCheck size={12} weight="fill" /> {t('users.verified')}
+                </Badge>
+              ) : null}
+              {u.is_featured ? (
+                <Badge tone="accent">
+                  <Star size={12} weight="fill" /> {t('users.featured')}
                 </Badge>
               ) : null}
               <Badge tone={u.is_active ? 'ok' : 'danger'}>{u.is_active ? t('users.active') : t('users.banned')}</Badge>
@@ -170,6 +188,12 @@ export default function Users() {
                     >
                       {u.is_verified ? t('users.unverify') : t('users.verify')}
                     </MenuItem>
+                    <MenuItem
+                      icon={<Star size={15} weight={u.is_featured ? 'fill' : 'regular'} className={u.is_featured ? '' : 'text-accent'} />}
+                      onSelect={() => featureM.mutate(u)}
+                    >
+                      {u.is_featured ? t('users.unfeatureHome') : t('users.featureHome')}
+                    </MenuItem>
                     <MenuItem icon={<Prohibit size={15} />} onSelect={() => setConfirm({ kind: 'ban', user: u })}>
                       {u.is_active ? t('users.ban') : t('users.unban')}
                     </MenuItem>
@@ -185,7 +209,7 @@ export default function Users() {
         },
       }),
     ],
-    [t, verifyM],
+    [t, verifyM, featureM],
   );
 
   return (
