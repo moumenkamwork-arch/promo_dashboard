@@ -1,5 +1,6 @@
 node_modules
 dist
+run_dashboard.bat
 dist-ssr
 *.local
 .env
