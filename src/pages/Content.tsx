@@ -18,6 +18,7 @@ import { formatMoney } from '@/lib/format';
 
 type Kind = 'offers' | 'services';
 const OFFER_STATUSES = ['active', 'draft', 'expired', 'rejected'];
+const SERVICE_STATUSES = ['active', 'paused'];
 
 function Thumb({ url }: { url?: string | null }) {
   return url ? (
@@ -52,7 +53,7 @@ export default function Content() {
   const servicesQ = useQuery({ queryKey: ['content', 'services', page], queryFn: () => getList<Service>('/admin/content/services', { params }), enabled: tab === 'services' });
 
   const statusM = useMutation({
-    mutationFn: ({ kind, id, status }: { kind: 'offers' | 'ads'; id: string; status: string }) =>
+    mutationFn: ({ kind, id, status }: { kind: 'offers' | 'services'; id: string; status: string }) =>
       api.patch(`/admin/content/${kind}/${id}/status`, { status }),
     onSuccess: () => {
       toast.success(t('content.changeStatus'));
@@ -62,7 +63,7 @@ export default function Content() {
   });
 
   const deleteM = useMutation({
-    mutationFn: ({ kind, id }: { kind: 'offers' | 'ads'; id: string }) => api.delete(`/admin/content/${kind}/${id}`),
+    mutationFn: ({ kind, id }: { kind: 'offers' | 'services'; id: string }) => api.delete(`/admin/content/${kind}/${id}`),
     onSuccess: () => {
       toast.success(t('common.delete'));
       qc.invalidateQueries({ queryKey: ['content'] });
@@ -91,7 +92,7 @@ export default function Content() {
 
   const activeQ = tab === 'offers' ? offersQ : servicesQ;
 
-  const StatusActions = ({ kind, id, title, statuses, featured }: { kind: 'offers'; id: string; title: string; statuses: string[]; featured?: boolean }) => (
+  const StatusActions = ({ kind, id, title, statuses, featured }: { kind: 'offers' | 'services'; id: string; title: string; statuses: string[]; featured?: boolean }) => (
     <div className="flex justify-end">
       <DropdownMenu.Root>
         <DropdownMenu.Trigger className="rounded-md p-1.5 text-ink-muted transition-colors hover:bg-surface-3 hover:text-ink">
@@ -184,12 +185,13 @@ export default function Content() {
                 <ContentTable
                   rows={servicesQ.data?.rows ?? []}
                   empty={<EmptyState icon={<SquaresFour size={22} />} title={t('common.noResults')} />}
-                  columns={['title', 'owner', 'price', 'status']}
+                  columns={['title', 'owner', 'price', 'status', 'actions']}
                   render={(s: Service) => ({
                     title: <span className="font-medium text-ink">{s.title}</span>,
                     owner: <OwnerCell profile={s.profile} />,
                     price: <span className="font-mono text-sm">{formatMoney(s.price)}</span>,
                     status: <StatusBadge status={s.status} />,
+                    actions: <StatusActions kind="services" id={s.id} title={s.title} statuses={SERVICE_STATUSES} />,
                   })}
                 />
               </TabPanel>
