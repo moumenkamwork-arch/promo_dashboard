@@ -4,7 +4,7 @@ import { useTranslation } from 'react-i18next';
 import * as DropdownMenu from '@radix-ui/react-dropdown-menu';
 import { DotsThree, Trash, ImageSquare, SquaresFour, ArrowsClockwise, Star } from '@phosphor-icons/react';
 import { api, getList, errorMessage } from '@/lib/api';
-import type { Ad, Offer, Service } from '@/types/api';
+import type { Offer, Service } from '@/types/api';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { Tabs, TabPanel } from '@/components/ui/Tabs';
 import { Pagination } from '@/components/ui/Pagination';
@@ -16,9 +16,8 @@ import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { toast } from '@/components/ui/Toaster';
 import { formatMoney } from '@/lib/format';
 
-type Kind = 'offers' | 'ads' | 'services';
+type Kind = 'offers' | 'services';
 const OFFER_STATUSES = ['active', 'draft', 'expired', 'rejected'];
-const AD_STATUSES = ['active', 'pending', 'paused', 'completed', 'rejected'];
 
 function Thumb({ url }: { url?: string | null }) {
   return url ? (
@@ -50,7 +49,6 @@ export default function Content() {
   // Admin moderation lists return ALL statuses (pending/draft/rejected) so admins
   // can review and act — the public list endpoints only expose active content.
   const offersQ = useQuery({ queryKey: ['content', 'offers', page], queryFn: () => getList<Offer>('/admin/content/offers', { params }), enabled: tab === 'offers' });
-  const adsQ = useQuery({ queryKey: ['content', 'ads', page], queryFn: () => getList<Ad>('/admin/content/ads', { params }), enabled: tab === 'ads' });
   const servicesQ = useQuery({ queryKey: ['content', 'services', page], queryFn: () => getList<Service>('/admin/content/services', { params }), enabled: tab === 'services' });
 
   const statusM = useMutation({
@@ -91,9 +89,9 @@ export default function Content() {
     setPage(1);
   };
 
-  const activeQ = tab === 'offers' ? offersQ : tab === 'ads' ? adsQ : servicesQ;
+  const activeQ = tab === 'offers' ? offersQ : servicesQ;
 
-  const StatusActions = ({ kind, id, title, statuses, featured }: { kind: 'offers' | 'ads'; id: string; title: string; statuses: string[]; featured?: boolean }) => (
+  const StatusActions = ({ kind, id, title, statuses, featured }: { kind: 'offers'; id: string; title: string; statuses: string[]; featured?: boolean }) => (
     <div className="flex justify-end">
       <DropdownMenu.Root>
         <DropdownMenu.Trigger className="rounded-md p-1.5 text-ink-muted transition-colors hover:bg-surface-3 hover:text-ink">
@@ -150,7 +148,6 @@ export default function Content() {
         onValueChange={changeTab}
         tabs={[
           { value: 'offers', label: t('content.offers') },
-          { value: 'ads', label: t('content.ads') },
           { value: 'services', label: t('content.services') },
         ]}
       >
@@ -180,21 +177,6 @@ export default function Content() {
                     price: <span className="font-mono text-sm">{formatMoney(o.offer_price)}</span>,
                     status: <StatusBadge status={o.status} />,
                     actions: <StatusActions kind="offers" id={o.id} title={o.title} statuses={OFFER_STATUSES} featured={o.is_featured} />,
-                  })}
-                />
-              </TabPanel>
-              <TabPanel value="ads">
-                <ContentTable
-                  rows={adsQ.data?.rows ?? []}
-                  empty={<EmptyState icon={<SquaresFour size={22} />} title={t('common.noResults')} />}
-                  columns={['thumb', 'title', 'owner', 'price', 'status', 'actions']}
-                  render={(a: Ad) => ({
-                    thumb: <Thumb url={a.media_url} />,
-                    title: <span className="font-medium text-ink">{a.title}</span>,
-                    owner: <OwnerCell profile={a.profile} />,
-                    price: <span className="font-mono text-sm">{a.price ? formatMoney(a.price) : '—'}</span>,
-                    status: <StatusBadge status={a.status} />,
-                    actions: <StatusActions kind="ads" id={a.id} title={a.title} statuses={AD_STATUSES} />,
                   })}
                 />
               </TabPanel>

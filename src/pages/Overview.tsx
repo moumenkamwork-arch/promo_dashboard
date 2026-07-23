@@ -11,7 +11,7 @@ import {
   YAxis,
   CartesianGrid,
 } from 'recharts';
-import { Users, Megaphone, Flag, CurrencyDollar, ArrowUpRight } from '@phosphor-icons/react';
+import { Users, Flag, CurrencyDollar, ArrowUpRight } from '@phosphor-icons/react';
 import { getData, getList } from '@/lib/api';
 import type { AdminStats, Payment, Report } from '@/types/api';
 import { PageHeader } from '@/components/ui/PageHeader';
@@ -100,9 +100,8 @@ export default function Overview() {
     <div className="animate-fade-up">
       <PageHeader title={t('overview.title')} subtitle={t('overview.subtitle')} />
 
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3 xl:grid-cols-3">
         <KpiCard icon={<Users size={16} />} label={t('overview.totalUsers')} value={formatNumber(statsQ.data?.totalUsers)} loading={statsQ.isLoading} />
-        <KpiCard icon={<Megaphone size={16} />} label={t('overview.activeAds')} value={formatNumber(statsQ.data?.activeAds)} loading={statsQ.isLoading} />
         <KpiCard icon={<Flag size={16} />} label={t('overview.pendingReports')} value={formatNumber(statsQ.data?.pendingReports)} loading={statsQ.isLoading} />
         <KpiCard icon={<CurrencyDollar size={16} weight="bold" />} label={t('overview.totalRevenue')} value={formatMoney(statsQ.data?.totalRevenue)} loading={statsQ.isLoading} highlight />
       </div>
